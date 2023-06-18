@@ -76,7 +76,7 @@ end
 toc
 disp('Sampling')
 
-del_ang_mom = trapz(tspan, vecnorm(taus, 2, 2));
+del_ang_mom = trapz(tspan, vecnorm(taus, 2, 2))
 
 ws = ys(:, 1:3)'; %obtain the angular rates vector from y at every instance of time
 w_arr_x = ws(1, :);
