@@ -1,12 +1,11 @@
-%next day you open this: duty cycle
 clc
 clear
-close
+close all
 
 %%                               Variable Definition
 %% spacecraft related
-J = [124.531 0 0; 0 124.586 0;
-    0 0 0.704]; %spacecraft moments of inertia
+J = [66.66 0 0; 0 66.66 0;
+    0 0 66.66]; %spacecraft moments of inertia
                                
 %% orbit related 
 mu = 398600; %[km^3/s^2]
@@ -22,8 +21,8 @@ imag = deg2rad(97 - 11.5); %inclination of orbit wrt magnetic equator
 mumag = 10^16; %[Wb*m]
 
 %% simulation/ feedback related
-
-ks = [0.5, 13; 0.5, 13; 0.1, 7; 0.5, 13]; %[20, 12; 1e-3, 1e-3; 1e-3, 1e-3; 20, 12];
+kp = 0.5;
+kd = 10;
 
 %% disturbance torque related
 Td_prem = [1e-4; 1e-4; 1e-4]; %[N] preliminary simplified disturbance torque
@@ -35,52 +34,49 @@ u_v = [1; 0; 0]; %unit vector in velocity direction
 % u0 = deg2rad(0.0209); %[rad] initial argument of latitude
 % RAAN0 = deg2rad(0); %[rad] initial right ascension of ascending node
 
-r0 = deg2rad(30); %initial roll
-p0 = deg2rad(30); %initial pitch
-y0 = deg2rad(30); %initial yaw
+r0 = deg2rad(80); %initial roll
+p0 = deg2rad(80); %initial pitch
+y0 = deg2rad(80); %initial yaw
 
 q0 = [r0 p0 y0]; %initial quaternions
 
 w0 = [0 0 0]; %initial angular rates
 y0 = [w0 q0];
 sampling_time = 0.1;
-tspans = [0, 99.9; 100, 500; 500.1, 900; 900.1, 1500];
-opts = odeset('RelTol', 1e-12, 'AbsTol', 1e-12);
+sim_length = 120;
+tspan = 0:sampling_time:sim_length;
+opts = odeset('RelTol', 1e-3, 'AbsTol', 1e-3);
 
-theta_refs = [0, 0, 0; deg2rad(70), deg2rad(70), deg2rad(70); deg2rad(-70), ...
-    deg2rad(-70), deg2rad(-70); 0, 0, 0];
+theta_ref = [0, 0, 0];
+
 tau = 0;
-ts = [];
-ys = [];
+taus = zeros(length(tspan), 3);
+ts = zeros(1, length(tspan));
+ys = zeros(length(tspan), 6);
+ys(1, :) = y0;
 
 %%                                Main Program
 %% 
 
-time_ref = 0:0.1:1500;
-commands_ref = [0*ones(1000, 1)' 70*ones(4001, 1)' -70*ones(4000, 1)' 0*ones(6000, 1)'];
+commands_ref = 0*ones(length(tspan), 1)';
+tic
 
-for j = 1:1:length(theta_refs(:, 1))
-    tspan = tspans(j, 1):sampling_time:tspans(j, 2);
-    theta_ref = theta_refs(j, :);
-    kp = ks(j, 1);
-    kd = ks(j, 2);
 for i = 2:length(tspan)
     [t, y] = ode23tb(@(t, y) odefunc(t, y, J, n, Td_prem, tau), ...
         [tspan(i-1) tspan(i)], y0, opts);
     y0 = y(end, :);
-    ts = [ts; t(end)];
-    ys = [ys; y(end, :)];
+    ts(i) = t(end);
+    ys(i, :) = y(end, :);
     w = y0(1:3)';
     theta = y0(4:6)';
     theta_dot = euler_dot(theta, w, n);
     tau = pd_controller(theta, kp, kd, theta_dot, theta_ref);
-    if mod(i, 100) == 0
-        t(end)
-    end
+    taus(i, :) = tau;
 end
-end
-
+toc
 disp('Sampling')
+
+del_ang_mom = trapz(tspan, vecnorm(taus, 2, 2));
 
 ws = ys(:, 1:3)'; %obtain the angular rates vector from y at every instance of time
 w_arr_x = ws(1, :);
@@ -93,13 +89,19 @@ yaw_arr = rad2deg(qs(3, :));
 
 %%                                 Plotting
 %% 
-t_orb = ts; %put in terms of orbits
+t_orb = tspan;
 
 figure(1)
 %
 plot(t_orb, roll_arr, t_orb, pitch_arr, t_orb, yaw_arr)
 hold on
-plot(time_ref, commands_ref, '--')
+plot(tspan, commands_ref, '--')
+hold on
+yline(2, 'k')
+hold on
+yline(-2, 'k')
+hold on
+xline(90, 'k')
 xlabel('Time [s]');
 ylabel('Angle [deg]');
 legend('Roll', 'Pitch', 'Yaw', 'Reference');
@@ -131,6 +133,27 @@ ylabel('wz [rad/s]')
 %ylim([-0.006, 0.006])
 grid minor 
 
+length(t_orb)
+length(tau(:,1))
+
+% Torques
+figure(3)
+subplot(3,1,1)
+area(t_orb, taus(:, 1), 'EdgeColor', 'b', 'FaceColor', 'b');
+xlabel('Orbits');
+ylabel('Mx');
+grid minor
+subplot(3,1,2)
+area(t_orb, taus(:, 2), 'EdgeColor', 'b', 'FaceColor', 'b');
+xlabel('Orbits');
+ylabel('My');
+grid minor
+subplot(3,1,3)
+area(t_orb, taus(:, 3), 'EdgeColor', 'b', 'FaceColor', 'b');
+xlabel('Orbits');
+ylabel('Mz');
+grid minor
+%}
 
 %%                            Function Definition
 %% Mathematical operations
