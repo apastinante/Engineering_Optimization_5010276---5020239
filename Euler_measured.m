@@ -21,8 +21,9 @@ imag = deg2rad(97 - 11.5); %inclination of orbit wrt magnetic equator
 mumag = 10^16; %[Wb*m]
 
 %% simulation/ feedback related
-kp = 0.5;
-kd = 10;
+kp = 5;
+kd = 15;
+ki = 1e-1;
 
 %% disturbance torque related
 Td_prem = [1e-4; 1e-4; 1e-4]; %[N] preliminary simplified disturbance torque
@@ -34,9 +35,9 @@ u_v = [1; 0; 0]; %unit vector in velocity direction
 % u0 = deg2rad(0.0209); %[rad] initial argument of latitude
 % RAAN0 = deg2rad(0); %[rad] initial right ascension of ascending node
 
-r0 = deg2rad(80); %initial roll
-p0 = deg2rad(80); %initial pitch
-y0 = deg2rad(80); %initial yaw
+r0 = deg2rad(30); %initial roll
+p0 = deg2rad(30); %initial pitch
+y0 = deg2rad(30); %initial yaw
 
 q0 = [r0 p0 y0]; %initial quaternions
 
@@ -70,11 +71,14 @@ for i = 2:length(tspan)
     w = y0(1:3)';
     theta = y0(4:6)';
     theta_dot = euler_dot(theta, w, n);
-    tau = pd_controller(theta, kp, kd, theta_dot, theta_ref);
+    bool = tspan <= t(end);
+    theta_error = ys(bool, 4:6) - theta_ref;
+    t_pid = ts(bool);
+    tau = pid_controller(theta, kp, kd, ki, theta_dot, theta_ref, ...
+        t_pid, theta_error);
     taus(i, :) = tau;
 end
 toc
-disp('Sampling')
 
 del_ang_mom = trapz(tspan, vecnorm(taus, 2, 2))
 
@@ -231,6 +235,15 @@ end
 
 function [tau] = pd_controller(theta, kp, kd, theta_dot, theta_ref)
 tau = -(kp*(theta - theta_ref') + kd*(theta_dot));
+end
+
+function [tau] = pid_controller(theta, kp, kd, ki, theta_dot, theta_ref, ...
+    t_pid, theta_error)
+error_r = trapz(t_pid, theta_error(:, 1));
+error_p = trapz(t_pid, theta_error(:, 2));
+error_y = trapz(t_pid, theta_error(:, 3));
+error_integral = [error_r, error_p, error_y]';
+tau = -(kp*(theta - theta_ref') + kd*(theta_dot) + ki*error_integral);
 end
 
 %% ODE45
