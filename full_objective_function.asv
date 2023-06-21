@@ -1,43 +1,25 @@
-clc
-clear
-close all
-
-%%                               Variable Definition
-%% spacecraft related
-J = [66.66 0 0; 0 66.66 0;
-    0 0 66.66]; %spacecraft moments of inertia
-                               
-%% orbit related 
-mu = 398600; %[km^3/s^2]
-h = 700; %[km] initial orbit height (wrt Earth's surface) 
-Re = 6371; %[km]
-a = Re + h; %[km] Semi-major axis of the orbit
-n = sqrt(mu/a^3);%[rad/s] angular rate of the spacecraft around the Earth
-T = 2*pi*sqrt(a^3/mu); %[s] orbital period
-v = sqrt(mu/a)*1000; %[m/s] orbital velocity
-
-%% magnetism related
-imag = deg2rad(97 - 11.5); %inclination of orbit wrt magnetic equator
-mumag = 10^16; %[Wb*m]
-
-%% simulation/ feedback related
-kp = 0.5;
-kd = 10;
-ki = 1e-4;
-
-%% disturbance torque related
-Td_prem = [1e-4; 1e-4; 1e-4]; %[N] preliminary simplified disturbance torque
-u_v = [1; 0; 0]; %unit vector in velocity direction
-
+function [tot_ang_mom, C_t, C_acc, C_m] = full_objective_function(kp, kd, J, n, Td_prem, ...
+    T_max, pointing_accuracy, settling_time, ki, isp, prop_mass, energy_stored)
 
 %%                             Initial Conditions
 %% 
 % u0 = deg2rad(0.0209); %[rad] initial argument of latitude
 % RAAN0 = deg2rad(0); %[rad] initial right ascension of ascending node
+tot_ang_mom = 0;
+thrust_constraints = zeros(3, 1);
+pointing_constraints = zeros(3, 1);
+mass_constraints = zeros(3, 1);
+energy_constraints = zeros(3, 1);
 
-r0 = deg2rad(80); %initial roll
-p0 = deg2rad(80); %initial pitch
-y0 = deg2rad(80); %initial yaw
+initial_devs = [30, 50, 80];
+
+for j=1:3
+current_mass = prop_mass;
+energy_used = 0;
+dev = initial_devs(j);
+r0 = deg2rad(dev); %initial roll
+p0 = deg2rad(dev); %initial pitch
+y0 = deg2rad(dev); %initial yaw
 
 q0 = [r0 p0 y0]; %initial quaternions
 
@@ -52,15 +34,12 @@ theta_ref = [0, 0, 0];
 
 tau = 0;
 taus = zeros(length(tspan), 3);
-ts = 1000*ones(1, length(tspan));
+ts = zeros(1, length(tspan));
 ys = zeros(length(tspan), 6);
 ys(1, :) = y0;
 
 %%                                Main Program
 %% 
-
-commands_ref = 0*ones(length(tspan), 1)';
-tic
 
 for i = 2:length(tspan)
     [t, y] = ode23tb(@(t, y) odefunc(t, y, J, n, Td_prem, tau), ...
@@ -72,92 +51,37 @@ for i = 2:length(tspan)
     theta = y0(4:6)';
     theta_dot = euler_dot(theta, w, n);
     bool = tspan <= t(end);
-    theta_error = ys(bool, 4:6) - theta_ref; 
+    theta_error = ys(bool, 4:6) - theta_ref;
     t_pid = ts(bool);
     tau = pid_controller(theta, kp, kd, ki, theta_dot, theta_ref, ...
         t_pid, theta_error);
     taus(i, :) = tau;
+    if max(tau) > 0.3
+        m_dot = get_mass_flow(tau, isp);
+        current_mass = current_mass - sampling_time*m_dot;
+        energy_used = energy_used + sampling_time*6*30;
+    elseif max(tau) > 6e-3
+        energy_used = energy_used + sampling_time*3*200;
+    else
+        energy_used = energy_used + sampling_time*3*40;
+    end
 end
-toc
 
-del_ang_mom = trapz(tspan, vecnorm(taus, 2, 2))
+del_ang_mom = trapz(tspan, vecnorm(taus, 2, 2));
+C_t_i = torque_constraint(taus, T_max);
+C_acc_i = accuracy_constraint(ts, ys(:, 4:6), pointing_accuracy, settling_time);
+C_m_i = mass_constraint(current_mass, prop_mass);
+C_e_i = energy_constraint()
 
-ws = ys(:, 1:3)'; %obtain the angular rates vector from y at every instance of time
-w_arr_x = ws(1, :);
-w_arr_y = ws(2, :);
-w_arr_z = ws(3, :);
-qs = ys(:, 4:6)'; %obtain the quaternion vector from y at every instance of time
-roll_arr = rad2deg(qs(1, :));
-pitch_arr = rad2deg(qs(2, :));
-yaw_arr = rad2deg(qs(3, :));
+tot_ang_mom = tot_ang_mom + del_ang_mom;
+thrust_constraints(j) = C_t_i;
+pointing_constraints(j) = C_acc_i;
+mass_constraints(j) = C_m_i;
+end
 
-%%                                 Plotting
-%% 
-t_orb = tspan;
-
-figure(1)
-%
-plot(t_orb, roll_arr, t_orb, pitch_arr, t_orb, yaw_arr)
-hold on
-plot(tspan, commands_ref, '--')
-hold on
-yline(2, 'k')
-hold on
-yline(-2, 'k')
-hold on
-xline(90, 'k')
-xlabel('Time [s]');
-ylabel('Angle [deg]');
-legend('Roll', 'Pitch', 'Yaw', 'Reference');
-grid minor 
-%}
-
-%%
-figure(2)
-%angular rates
-%wx
-subplot(3,1,1)
-plot(t_orb, w_arr_x)
-xlabel('Time [s]')
-ylabel('wx [rad/s]')
-%ylim([-0.006, 0.006])
-grid minor
-%wy
-subplot(3,1,2)
-plot(t_orb, w_arr_y)
-xlabel('Time [s]')
-ylabel('wy [rad/s]')
-%ylim([-0.006, 0.006])
-grid minor 
-%wz
-subplot(3,1,3)
-plot(t_orb, w_arr_z)
-xlabel('Time [s]')
-ylabel('wz [rad/s]')
-%ylim([-0.006, 0.006])
-grid minor 
-
-length(t_orb)
-length(tau(:,1))
-
-% Torques
-figure(3)
-subplot(3,1,1)
-area(t_orb, taus(:, 1), 'EdgeColor', 'b', 'FaceColor', 'b');
-xlabel('Orbits');
-ylabel('Mx');
-grid minor
-subplot(3,1,2)
-area(t_orb, taus(:, 2), 'EdgeColor', 'b', 'FaceColor', 'b');
-xlabel('Orbits');
-ylabel('My');
-grid minor
-subplot(3,1,3)
-area(t_orb, taus(:, 3), 'EdgeColor', 'b', 'FaceColor', 'b');
-xlabel('Orbits');
-ylabel('Mz');
-grid minor
-%}
+C_t = max(thrust_constraints);
+C_acc = max(pointing_constraints);
+C_m = max(mass_constraints);
 
 %%                            Function Definition
 %% Mathematical operations
@@ -233,10 +157,6 @@ end
 
 %% Feedback Laws
 
-function [tau] = pd_controller(theta, kp, kd, theta_dot, theta_ref)
-tau = -(kp*(theta - theta_ref') + kd*(theta_dot));
-end
-
 function [tau] = pid_controller(theta, kp, kd, ki, theta_dot, theta_ref, ...
     t_pid, theta_error)
 error_r = trapz(t_pid, theta_error(:, 1));
@@ -274,4 +194,30 @@ dydt(3) = w_dot(3);
 dydt(4) = theta_dot(1);
 dydt(5) = theta_dot(2);
 dydt(6) = theta_dot(3);
+end
+
+function [C_t] = torque_constraint(taus, T_max)
+tau_req = max(taus, [], 1);
+C_t = (max(tau_req) - T_max)/T_max;
+end
+
+function [C_acc] = accuracy_constraint(ts, theta, pointing_accuracy, settling_time)
+bool = ts>settling_time;
+aux = max(theta(bool, :), [], 2);
+accuracy = max(aux);
+C_acc = (accuracy - pointing_accuracy)/pointing_accuracy;
+end
+
+function [m_dot] = get_mass_flow(tau, isp)
+m_dot = max(tau)/isp/9.81;
+end
+
+function [C_m] = mass_constraint(final_mass, tot_mass)
+C_m = (-final_mass)/tot_mass;
+end
+
+function [C_e] = energy_constraint(energy_used, tot_energy)
+C_e = (energy_used - tot_energy)/tot_energy;
+end
+
 end

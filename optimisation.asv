@@ -21,6 +21,6 @@ settling_time = 90;  % [rad]
 
 
 tic
-[] = objective_function(0.5, 10, J, n, Td_prem, T_max, pointing_accuracy, ...
+[del_ang_mom, C_t, C_acc] = objective_function(0.5, 10, J, n, Td_prem, T_max, pointing_accuracy, ...
     settling_time)
 toc

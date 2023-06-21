@@ -21,9 +21,9 @@ imag = deg2rad(97 - 11.5); %inclination of orbit wrt magnetic equator
 mumag = 10^16; %[Wb*m]
 
 %% simulation/ feedback related
-kp = 5;
-kd = 15;
-ki = 1e-1;
+kp = 0.7;
+kd = 10;
+ki = 1e-3;
 
 %% disturbance torque related
 Td_prem = [1e-4; 1e-4; 1e-4]; %[N] preliminary simplified disturbance torque
@@ -35,9 +35,9 @@ u_v = [1; 0; 0]; %unit vector in velocity direction
 % u0 = deg2rad(0.0209); %[rad] initial argument of latitude
 % RAAN0 = deg2rad(0); %[rad] initial right ascension of ascending node
 
-r0 = deg2rad(30); %initial roll
-p0 = deg2rad(30); %initial pitch
-y0 = deg2rad(30); %initial yaw
+r0 = deg2rad(80); %initial roll
+p0 = deg2rad(80); %initial pitch
+y0 = deg2rad(80); %initial yaw
 
 q0 = [r0 p0 y0]; %initial quaternions
 
@@ -101,9 +101,9 @@ plot(t_orb, roll_arr, t_orb, pitch_arr, t_orb, yaw_arr)
 hold on
 plot(tspan, commands_ref, '--')
 hold on
-yline(2, 'k')
+yline(1, 'k')
 hold on
-yline(-2, 'k')
+yline(-1, 'k')
 hold on
 xline(90, 'k')
 xlabel('Time [s]');
