@@ -1,4 +1,4 @@
-function [tot_ang_mom, C_t, C_acc, C_m, C_e] = full_objective_function(kp, kd, J, n, Td_prem, ...
+function [fitness] = full_objective_function(kp, kd, J, n, Td_prem, ...
     T_max, pointing_accuracy, settling_time, ki, isp, prop_mass, energy_stored)
 
 %%                             Initial Conditions
@@ -89,6 +89,11 @@ C_t = max(thrust_constraints);
 C_acc = max(pointing_constraints);
 C_m = max(mass_constraints);
 C_e = max(energy_constraints);
+validity = 0;
+if C_t<=0 && C_acc <=0 && C_m <= 0 && C_e <= 0
+    validity = 1;
+end
+fitness = [tot_ang_mom, C_t, C_acc, C_m, C_e, validity];
 
 %%                            Function Definition
 %% Mathematical operations

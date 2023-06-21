@@ -23,6 +23,6 @@ prop_mass = 0.005;  % [kg]
 energy_stored = (8.64e6 - 50*60*710)/10;  % [J]
 
 tic
-[del_ang_mom, C_t, C_acc, C_m, C_e] = full_objective_function(0.5, 10, J, n, Td_prem, T_max, pointing_accuracy, ...
+fitness = full_objective_function(0.5, 10, J, n, Td_prem, T_max, pointing_accuracy, ...
     settling_time, 1e-5, isp, prop_mass, energy_stored)
 toc
