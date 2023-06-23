@@ -17,10 +17,31 @@ Td_prem = [1e-4; 1e-4; 1e-4]; %[N] preliminary simplified disturbance torque
 %% Constraint values
 T_max = 1;  % [Nm]
 pointing_accuracy = deg2rad(2);  % [rad]
-settling_time = 90;  % [rad]
+settling_time = 90;  % [s]
 
+%% Optimisation with Sequential Quadratic Programming
 
-tic
-[del_ang_mom, C_t, C_acc] = objective_function(0.5, 10, J, n, Td_prem, T_max, pointing_accuracy, ...
-    settling_time)
-toc
+x0 = [0.6, 10];
+lb = [0.1, 4];
+ub = [1.4, 14];
+
+A = [];
+b = [];
+Aeq = [];
+beq = [];
+
+nonlcon = @(x)simp_constraints(x, J, n, Td_prem, T_max, pointing_accuracy, ...
+    settling_time);
+
+fun = @(x)simp_del_ang_mom(x, J, n, Td_prem, T_max, pointing_accuracy, ...
+    settling_time);
+
+options = optimoptions('fmincon','Display','iter');
+
+% x_opt = fmincon(fun,x0,A,b,Aeq,beq,lb,ub,nonlcon, options)
+
+%% Optimisation with Genetic Algorightm
+
+nvars = 2;
+options = optimoptions('ga','Display','iter', 'PopulationSize', 50);
+[x,fval,exitflag,output] = ga(fun,nvars,A,b,Aeq,beq,lb,ub,nonlcon, options)

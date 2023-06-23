@@ -23,12 +23,12 @@ prop_mass = 0.005;  % [kg]
 energy_stored = (8.64e6 - 50*60*710)/10;  % [J]
 
 %% Design Variable Bounds
-bounds = [0.1, 2; 1, 15; 1e-5, 5e-3];
+bounds = [0.2, 1.5; 4, 14; 1e-6, 2e-3];
 
 %% Simulation
-n_sim = 50;
+n_sim = 2000;
 pool = ones(n_sim, 3);
-assessment = ones(n_sim, 6);
+assessment = ones(n_sim, 4);
 
 for i = 1:n_sim
     kp = (bounds(1, 2) - bounds(1, 1))*rand() + bounds(1, 1);
@@ -40,8 +40,10 @@ end
 for i = 1:n_sim
     display(i)
     tic
-    assessment(i, :) = full_objective_function(pool(i, 1), pool(i, 2), J, n, Td_prem, T_max, pointing_accuracy, ...
-    settling_time, pool(i, 3), isp, prop_mass, energy_stored);
+    %assessment(i, :) = full_objective_function(pool(i, 1), pool(i, 2), J, n, Td_prem, T_max, pointing_accuracy, ...
+    %settling_time, pool(i, 3), isp, prop_mass, energy_stored);
+    assessment(i, :) = final_objective_function(pool(i, 1), pool(i, 2), J, n, Td_prem, T_max, pointing_accuracy, ...
+    settling_time, pool(i, 3));
     toc
 end
 
@@ -53,26 +55,27 @@ bool = assessment(:, end) > 0;
 bool2 = assessment(:, end) == 0;
 
 figure(1)
-scatter(pool(bool, 1), assessment(bool, 1), 'Filled', 'b')
+scatter(pool(bool2, 1), assessment(bool2, 1), 'Filled', 'r')
 xlabel('$K_p$ [-]', 'interpreter', 'latex')
 ylabel('Delivered Angular Momentum [Nms]')
+grid on
 hold on
-scatter(pool(bool2, 1), assessment(bool2, 1), 'Filled', 'r')
+scatter(pool(bool, 1), assessment(bool, 1), 'Filled', 'b')
 figure(2)
+scatter(pool(bool2, 2), assessment(bool2, 1), 'Filled', 'r')
+hold on
 scatter(pool(bool, 2), assessment(bool, 1), 'Filled', 'b')
 xlabel('$K_d$ [-]', 'interpreter', 'latex')
 ylabel('Delivered Angular Momentum [Nms]')
-hold on
-scatter(pool(bool2, 2), assessment(bool2, 1), 'Filled', 'r')
+grid on
 figure(3)
-scatter(pool(bool, 3), assessment(bool, 1), 'Filled', 'b')
-hold on
 scatter(pool(bool2, 3), assessment(bool2, 1), 'Filled', 'r')
+hold on
+scatter(pool(bool, 3), assessment(bool, 1), 'Filled', 'b')
 xlabel('$K_i$ [-]', 'interpreter', 'latex')
 ylabel('Delivered Angular Momentum [Nms]')
+grid on
 
-
-x = 1:4;
 y = zeros(4,1);
 for i=1:length(assessment(:, 1))
     if assessment(i, 2) > 0
@@ -86,12 +89,58 @@ for i=1:length(assessment(:, 1))
     end
 end
 
+x = {'C_T', 'C_{acc}'};
 y = y./sum(y);
 figure(4)
-bar(x, y)
+bar(y)
 xlabel('Contraint Number [-]')
 ylabel('Percentage of violations [-]')
+set(gca, 'XTickLabel', x)
+grid on
 
+figure(5)
+scatter(pool(bool2, 1), assessment(bool2, 2), 'Filled', 'r')
+xlabel('$K_p$ [-]', 'interpreter', 'latex')
+ylabel('$C_T$ [-]', 'interpreter', 'latex')
+grid on
+hold on
+scatter(pool(bool, 1), assessment(bool, 2), 'Filled', 'b')
+figure(6)
+scatter(pool(bool2, 2), assessment(bool2, 2), 'Filled', 'r')
+hold on
+scatter(pool(bool, 2), assessment(bool, 2), 'Filled', 'b')
+xlabel('$K_d$ [-]', 'interpreter', 'latex')
+ylabel('$C_T$ [-]', 'interpreter', 'latex')
+grid on
+figure(7)
+scatter(pool(bool2, 3), assessment(bool2, 2), 'Filled', 'r')
+hold on
+scatter(pool(bool, 3), assessment(bool, 2), 'Filled', 'b')
+xlabel('$K_i$ [-]', 'interpreter', 'latex')
+ylabel('$C_T$ [-]', 'interpreter', 'latex')
+grid on
+
+figure(8)
+scatter(pool(bool2, 1), assessment(bool2, 3), 'Filled', 'r')
+xlabel('$K_p$ [-]', 'interpreter', 'latex')
+ylabel('$C_{acc}$ [-]', 'interpreter', 'latex')
+grid on
+hold on
+scatter(pool(bool, 1), assessment(bool, 3), 'Filled', 'b')
+figure(9)
+scatter(pool(bool2, 2), assessment(bool2, 3), 'Filled', 'r')
+hold on
+scatter(pool(bool, 2), assessment(bool, 3), 'Filled', 'b')
+xlabel('$K_d$ [-]', 'interpreter', 'latex')
+ylabel('$C_{acc}$ [-]', 'interpreter', 'latex')
+grid on
+figure(10)
+scatter(pool(bool2, 3), assessment(bool2, 3), 'Filled', 'r')
+hold on
+scatter(pool(bool, 3), assessment(bool, 3), 'Filled', 'b')
+xlabel('$K_i$ [-]', 'interpreter', 'latex')
+ylabel('$C_{acc}$ [-]', 'interpreter', 'latex')
+grid on
 
 
 

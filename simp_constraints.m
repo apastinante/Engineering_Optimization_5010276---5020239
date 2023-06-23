@@ -1,10 +1,13 @@
-function [del_ang_mom, C_t, C_acc] = objective_function(kp, kd, J, n, Td_prem, ...
+function [c, ceq] = simp_contraints(x, J, n, Td_prem, ...
     T_max, pointing_accuracy, settling_time)
 
 %%                             Initial Conditions
 %% 
 % u0 = deg2rad(0.0209); %[rad] initial argument of latitude
 % RAAN0 = deg2rad(0); %[rad] initial right ascension of ascending node
+
+kp = x(1);
+kd = x(2);
 
 r0 = deg2rad(80); %initial roll
 p0 = deg2rad(80); %initial pitch
@@ -43,9 +46,10 @@ for i = 2:length(tspan)
     taus(i, :) = tau;
 end
 
-del_ang_mom = trapz(tspan, vecnorm(taus, 2, 2));
 C_t = torque_constraint(taus, T_max);
 C_acc = accuracy_constraint(ts, ys(:, 4:6), pointing_accuracy, settling_time);
+c = [C_t, C_acc];
+ceq = [];
 
 %%                            Function Definition
 %% Mathematical operations
@@ -162,7 +166,7 @@ end
 
 function [C_acc] = accuracy_constraint(ts, theta, pointing_accuracy, settling_time)
 bool = ts>settling_time;
-aux = max(theta(bool, :), [], 2);
+aux = max(abs(theta(bool, :)), [], 2);
 accuracy = max(aux);
 C_acc = (accuracy - pointing_accuracy)/pointing_accuracy;
 end

@@ -1,31 +1,22 @@
-function [tot_ang_mom, C_t, C_acc, C_m] = full_objective_function(kp, kd, J, n, Td_prem, ...
-    T_max, pointing_accuracy, settling_time, ki, isp, prop_mass, energy_stored)
+function [del_ang_mom] = simp_del_ang_mom(x, J, n, Td_prem, ...
+    T_max, pointing_accuracy, settling_time)
 
 %%                             Initial Conditions
 %% 
 % u0 = deg2rad(0.0209); %[rad] initial argument of latitude
 % RAAN0 = deg2rad(0); %[rad] initial right ascension of ascending node
-tot_ang_mom = 0;
-thrust_constraints = zeros(3, 1);
-pointing_constraints = zeros(3, 1);
-mass_constraints = zeros(3, 1);
-energy_constraints = zeros(3, 1);
+kp = x(1);
+kd = x(2);
 
-initial_devs = [30, 50, 80];
-
-for j=1:3
-current_mass = prop_mass;
-energy_used = 0;
-dev = initial_devs(j);
-r0 = deg2rad(dev); %initial roll
-p0 = deg2rad(dev); %initial pitch
-y0 = deg2rad(dev); %initial yaw
+r0 = deg2rad(80); %initial roll
+p0 = deg2rad(80); %initial pitch
+y0 = deg2rad(80); %initial yaw
 
 q0 = [r0 p0 y0]; %initial quaternions
 
 w0 = [0 0 0]; %initial angular rates
 y0 = [w0 q0];
-sampling_time = 0.1;
+sampling_time = 0.3;
 sim_length = 120;
 tspan = 0:sampling_time:sim_length;
 opts = odeset('RelTol', 1e-3, 'AbsTol', 1e-3);
@@ -42,7 +33,7 @@ ys(1, :) = y0;
 %% 
 
 for i = 2:length(tspan)
-    [t, y] = ode23tb(@(t, y) odefunc(t, y, J, n, Td_prem, tau), ...
+    [t, y] = ode23(@(t, y) odefunc(t, y, J, n, Td_prem, tau), ...
         [tspan(i-1) tspan(i)], y0, opts);
     y0 = y(end, :);
     ts(i) = t(end);
@@ -50,38 +41,11 @@ for i = 2:length(tspan)
     w = y0(1:3)';
     theta = y0(4:6)';
     theta_dot = euler_dot(theta, w, n);
-    bool = tspan <= t(end);
-    theta_error = ys(bool, 4:6) - theta_ref;
-    t_pid = ts(bool);
-    tau = pid_controller(theta, kp, kd, ki, theta_dot, theta_ref, ...
-        t_pid, theta_error);
+    tau = pd_controller(theta, kp, kd, theta_dot, theta_ref);
     taus(i, :) = tau;
-    if max(tau) > 0.3
-        m_dot = get_mass_flow(tau, isp);
-        current_mass = current_mass - sampling_time*m_dot;
-        energy_used = energy_used + sampling_time*6*30;
-    elseif max(tau) > 6e-3
-        energy_used = energy_used + sampling_time*3*200;
-    else
-        energy_used = energy_used + sampling_time*3*40;
-    end
 end
 
 del_ang_mom = trapz(tspan, vecnorm(taus, 2, 2));
-C_t_i = torque_constraint(taus, T_max);
-C_acc_i = accuracy_constraint(ts, ys(:, 4:6), pointing_accuracy, settling_time);
-C_m_i = mass_constraint(current_mass, prop_mass);
-C_e_i = energy_constraint()
-
-tot_ang_mom = tot_ang_mom + del_ang_mom;
-thrust_constraints(j) = C_t_i;
-pointing_constraints(j) = C_acc_i;
-mass_constraints(j) = C_m_i;
-end
-
-C_t = max(thrust_constraints);
-C_acc = max(pointing_constraints);
-C_m = max(mass_constraints);
 
 %%                            Function Definition
 %% Mathematical operations
@@ -157,13 +121,8 @@ end
 
 %% Feedback Laws
 
-function [tau] = pid_controller(theta, kp, kd, ki, theta_dot, theta_ref, ...
-    t_pid, theta_error)
-error_r = trapz(t_pid, theta_error(:, 1));
-error_p = trapz(t_pid, theta_error(:, 2));
-error_y = trapz(t_pid, theta_error(:, 3));
-error_integral = [error_r, error_p, error_y]';
-tau = -(kp*(theta - theta_ref') + kd*(theta_dot) + ki*error_integral);
+function [tau] = pd_controller(theta, kp, kd, theta_dot, theta_ref)
+tau = -(kp*(theta - theta_ref') + kd*(theta_dot));
 end
 
 %% ODE45
@@ -194,30 +153,6 @@ dydt(3) = w_dot(3);
 dydt(4) = theta_dot(1);
 dydt(5) = theta_dot(2);
 dydt(6) = theta_dot(3);
-end
-
-function [C_t] = torque_constraint(taus, T_max)
-tau_req = max(taus, [], 1);
-C_t = (max(tau_req) - T_max)/T_max;
-end
-
-function [C_acc] = accuracy_constraint(ts, theta, pointing_accuracy, settling_time)
-bool = ts>settling_time;
-aux = max(theta(bool, :), [], 2);
-accuracy = max(aux);
-C_acc = (accuracy - pointing_accuracy)/pointing_accuracy;
-end
-
-function [m_dot] = get_mass_flow(tau, isp)
-m_dot = max(tau)/isp/9.81;
-end
-
-function [C_m] = mass_constraint(final_mass, tot_mass)
-C_m = (-final_mass)/tot_mass;
-end
-
-function [C_e] = energy_constraint(energy_used, tot_energy)
-C_e = (energy_used - tot_energy)/tot_energy;
 end
 
 end

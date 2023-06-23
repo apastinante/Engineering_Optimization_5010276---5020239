@@ -1,14 +1,22 @@
-function [del_ang_mom, C_t, C_acc] = objective_function(kp, kd, J, n, Td_prem, ...
-    T_max, pointing_accuracy, settling_time)
+function [fitness] = final_objective_function(kp, kd, J, n, Td_prem, ...
+    T_max, pointing_accuracy, settling_time, ki)
 
 %%                             Initial Conditions
 %% 
-% u0 = deg2rad(0.0209); %[rad] initial argument of latitude
-% RAAN0 = deg2rad(0); %[rad] initial right ascension of ascending node
+tot_ang_mom = 0;
+thrust_constraints = zeros(3, 1);
+pointing_constraints = zeros(3, 1);
+mass_constraints = zeros(3, 1);
+energy_constraints = zeros(3, 1);
 
-r0 = deg2rad(80); %initial roll
-p0 = deg2rad(80); %initial pitch
-y0 = deg2rad(80); %initial yaw
+initial_devs = [30, 50, 80];
+
+for j=1:3
+  
+dev = initial_devs(j);
+r0 = deg2rad(dev); %initial roll
+p0 = deg2rad(dev); %initial pitch
+y0 = deg2rad(dev); %initial yaw
 
 q0 = [r0 p0 y0]; %initial quaternions
 
@@ -33,19 +41,40 @@ ys(1, :) = y0;
 for i = 2:length(tspan)
     [t, y] = ode23(@(t, y) odefunc(t, y, J, n, Td_prem, tau), ...
         [tspan(i-1) tspan(i)], y0, opts);
+    
     y0 = y(end, :);
     ts(i) = t(end);
     ys(i, :) = y(end, :);
+
     w = y0(1:3)';
     theta = y0(4:6)';
     theta_dot = euler_dot(theta, w, n);
-    tau = pd_controller(theta, kp, kd, theta_dot, theta_ref);
+
+    bool = tspan <= t(end);
+    theta_error = ys(bool, 4:6) - theta_ref;
+    t_pid = ts(bool);
+    tau = pid_controller(theta, kp, kd, ki, theta_dot, theta_ref, ...
+        t_pid, theta_error);
+
     taus(i, :) = tau;
 end
 
 del_ang_mom = trapz(tspan, vecnorm(taus, 2, 2));
-C_t = torque_constraint(taus, T_max);
-C_acc = accuracy_constraint(ts, ys(:, 4:6), pointing_accuracy, settling_time);
+C_t_i = torque_constraint(taus, T_max);
+C_acc_i = accuracy_constraint(ts, ys(:, 4:6), pointing_accuracy, settling_time);
+
+tot_ang_mom = tot_ang_mom + del_ang_mom;
+thrust_constraints(j) = C_t_i;
+pointing_constraints(j) = C_acc_i;
+end
+
+C_t = max(thrust_constraints);
+C_acc = max(pointing_constraints);
+validity = 0;
+if C_t<=0 && C_acc <=0
+    validity = 1;
+end
+fitness = [tot_ang_mom, C_t, C_acc, validity];
 
 %%                            Function Definition
 %% Mathematical operations
@@ -121,8 +150,13 @@ end
 
 %% Feedback Laws
 
-function [tau] = pd_controller(theta, kp, kd, theta_dot, theta_ref)
-tau = -(kp*(theta - theta_ref') + kd*(theta_dot));
+function [tau] = pid_controller(theta, kp, kd, ki, theta_dot, theta_ref, ...
+    t_pid, theta_error)
+error_r = trapz(t_pid, theta_error(:, 1));
+error_p = trapz(t_pid, theta_error(:, 2));
+error_y = trapz(t_pid, theta_error(:, 3));
+error_integral = [error_r, error_p, error_y]';
+tau = -(kp*(theta - theta_ref') + kd*(theta_dot) + ki*error_integral);
 end
 
 %% ODE45
@@ -162,7 +196,7 @@ end
 
 function [C_acc] = accuracy_constraint(ts, theta, pointing_accuracy, settling_time)
 bool = ts>settling_time;
-aux = max(theta(bool, :), [], 2);
+aux = max(abs(theta(bool, :)), [], 2);
 accuracy = max(aux);
 C_acc = (accuracy - pointing_accuracy)/pointing_accuracy;
 end

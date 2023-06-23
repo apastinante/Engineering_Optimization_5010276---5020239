@@ -16,18 +16,34 @@ n = sqrt(mu/a^3);%[rad/s] angular rate of the spacecraft around the Earth
 T = 2*pi*sqrt(a^3/mu); %[s] orbital period
 v = sqrt(mu/a)*1000; %[m/s] orbital velocity
 
-%% magnetism related
-imag = deg2rad(97 - 11.5); %inclination of orbit wrt magnetic equator
-mumag = 10^16; %[Wb*m]
-
-%% simulation/ feedback related
-kp = 0.7;
-kd = 10;
-ki = 1e-3;
-
 %% disturbance torque related
 Td_prem = [1e-4; 1e-4; 1e-4]; %[N] preliminary simplified disturbance torque
 u_v = [1; 0; 0]; %unit vector in velocity direction
+
+%% simulation/ feedback related
+% nominal -> del_ang_mom = 13.7373 Nms
+% kp = 0.6;
+% kd = 10;
+% ki = 1e-4;
+
+% optimal simplified problem -> del_ang_mom = 8.843966 Nms
+% kp = 0.2492;
+% kd = 6.0768;
+% ki = 0;
+
+% fitness_simple = objective_function(kp, kd, J, n, Td_prem, ...
+%     T_max, pointing_accuracy, settling_time)
+
+% optimal full problem -> del_ang_mom = 19.10658 Nms (full) 
+%                     and del_ang_mom = 10.0485 Nms (simplified)
+kp = 0.349384116049841;
+kd = 8.550631994521687;
+ki = 1.026123024369114e-04;
+
+%% Constraint values
+T_max = 1;  % [Nm]
+pointing_accuracy = deg2rad(2);  % [rad]
+settling_time = 90;  % [s]
 
 
 %%                             Initial Conditions
@@ -43,7 +59,7 @@ q0 = [r0 p0 y0]; %initial quaternions
 
 w0 = [0 0 0]; %initial angular rates
 y0 = [w0 q0];
-sampling_time = 0.1;
+sampling_time = 0.3;
 sim_length = 120;
 tspan = 0:sampling_time:sim_length;
 opts = odeset('RelTol', 1e-3, 'AbsTol', 1e-3);
@@ -59,11 +75,17 @@ ys(1, :) = y0;
 %%                                Main Program
 %% 
 
+% fitness_simple = objective_function(kp, kd, J, n, Td_prem, ...
+%     T_max, pointing_accuracy, settling_time)
+
+fitness_full = final_objective_function(kp, kd, J, n, Td_prem, T_max, ...
+    pointing_accuracy, settling_time, ki)
+
 commands_ref = 0*ones(length(tspan), 1)';
 tic
 
 for i = 2:length(tspan)
-    [t, y] = ode23tb(@(t, y) odefunc(t, y, J, n, Td_prem, tau), ...
+    [t, y] = ode23(@(t, y) odefunc(t, y, J, n, Td_prem, tau), ...
         [tspan(i-1) tspan(i)], y0, opts);
     y0 = y(end, :);
     ts(i) = t(end);
@@ -101,9 +123,9 @@ plot(t_orb, roll_arr, t_orb, pitch_arr, t_orb, yaw_arr)
 hold on
 plot(tspan, commands_ref, '--')
 hold on
-yline(1, 'k')
+yline(2, 'k')
 hold on
-yline(-1, 'k')
+yline(-2, 'k')
 hold on
 xline(90, 'k')
 xlabel('Time [s]');
@@ -144,18 +166,18 @@ length(tau(:,1))
 figure(3)
 subplot(3,1,1)
 area(t_orb, taus(:, 1), 'EdgeColor', 'b', 'FaceColor', 'b');
-xlabel('Orbits');
-ylabel('Mx');
+xlabel('Time [s]');
+ylabel('Tx');
 grid minor
 subplot(3,1,2)
 area(t_orb, taus(:, 2), 'EdgeColor', 'b', 'FaceColor', 'b');
-xlabel('Orbits');
-ylabel('My');
+xlabel('Time [s]');
+ylabel('Ty');
 grid minor
 subplot(3,1,3)
 area(t_orb, taus(:, 3), 'EdgeColor', 'b', 'FaceColor', 'b');
-xlabel('Orbits');
-ylabel('Mz');
+xlabel('Time [s]');
+ylabel('Tz');
 grid minor
 %}
 

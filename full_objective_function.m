@@ -25,7 +25,7 @@ q0 = [r0 p0 y0]; %initial quaternions
 
 w0 = [0 0 0]; %initial angular rates
 y0 = [w0 q0];
-sampling_time = 0.1;
+sampling_time = 0.3;
 sim_length = 120;
 tspan = 0:sampling_time:sim_length;
 opts = odeset('RelTol', 1e-3, 'AbsTol', 1e-3);
@@ -42,7 +42,7 @@ ys(1, :) = y0;
 %% 
 
 for i = 2:length(tspan)
-    [t, y] = ode23tb(@(t, y) odefunc(t, y, J, n, Td_prem, tau), ...
+    [t, y] = ode23(@(t, y) odefunc(t, y, J, n, Td_prem, tau), ...
         [tspan(i-1) tspan(i)], y0, opts);
     
     y0 = y(end, :);
@@ -64,7 +64,7 @@ for i = 2:length(tspan)
     if max(tau) > 0.3
         m_dot = get_mass_flow(tau, isp);
         current_mass = current_mass - sampling_time*m_dot;
-        energy_used = energy_used + sampling_time*6*30;
+        energy_used = energy_used + sampling_time*12*30;
     elseif max(tau) > 6e-3
         energy_used = energy_used + sampling_time*3*200;
     else
