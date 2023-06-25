@@ -34,11 +34,22 @@ u_v = [1; 0; 0]; %unit vector in velocity direction
 % fitness_simple = objective_function(kp, kd, J, n, Td_prem, ...
 %     T_max, pointing_accuracy, settling_time)
 
-% optimal full problem -> del_ang_mom = 19.10658 Nms (full) 
-%                     and del_ang_mom = 10.0485 Nms (simplified)
-kp = 0.349384116049841;
-kd = 8.550631994521687;
-ki = 1.026123024369114e-04;
+% optimal full problem -> del_ang_mom = 16.76 Nms (full) 
+%                     and del_ang_mom = 9.9847 Nms (simplified)
+kp = 0.2669; %0.349384116049841;
+kd = 7.4259; %8.550631994521687;
+ki = 1.877867588671635e-04; %1.026123024369114e-04;
+
+% optimal simplified problem ga -> del_ang_mom = 9.9853 NMS
+kp = 0.3977; % 0.3593
+kd = 10.1746; % 9.1939
+ki = 0;
+
+% optimal full problem ga -> del_ang_mom = 18.2793 Nms (full)
+%                              and del_ang_mom = (simplified)
+kp = 0.4145;
+kd = 12.7255;
+ki = 4.9622e-04;
 
 %% Constraint values
 T_max = 1;  % [Nm]

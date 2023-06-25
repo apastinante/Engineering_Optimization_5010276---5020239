@@ -21,8 +21,8 @@ settling_time = 90;  % [s]
 
 %% Optimisation with Interior Point Algorithm
 
-x0 = [10, 100];
-%x0 = [0.3593, 9.1939];
+%x0 = [10, 100];
+x0 = [0.3977, 10.1746];
 lb = [0.1, 4];
 ub = [1.4, 14];
 
@@ -39,17 +39,17 @@ fun = @(x)simp_del_ang_mom(x, J, n, Td_prem, T_max, pointing_accuracy, ...
 
 options = optimoptions('fmincon','Display','iter');
 
-%x_opt = fmincon(fun,x0,A,b,Aeq,beq,lb,ub,nonlcon, options)
+% x_opt = fmincon(fun,x0,A,b,Aeq,beq,lb,ub,nonlcon, options)
 
 %% Optimisation with Sequential Quadratic Programming
 
 options = optimoptions('fmincon','Display','iter', 'Algorithm', 'sqp');
 
-x_opt = fmincon(fun,x0,A,b,Aeq,beq,lb,ub,nonlcon, options)
+% x_opt = fmincon(fun,x0,A,b,Aeq,beq,lb,ub,nonlcon, options)
 
 %% Optimisation with Generalised Pattern Search
 
-options = optimoptions('patternsearch','Display','iter');
+options = optimoptions('patternsearch','Display','iter', 'Algorithm', 'classic');
 
 % x_opt = patternsearch(fun,x0,A,b,Aeq,beq,lb,ub,nonlcon, options)
 
@@ -57,4 +57,4 @@ options = optimoptions('patternsearch','Display','iter');
 
 nvars = 2;
 options = optimoptions('ga', 'Display', 'iter', 'PopulationSize', 200);
-%[x,fval,exitflag,output] = ga(fun, nvars, A, b, Aeq, beq, lb, ub, nonlcon, options)
+[x,fval,exitflag,output] = ga(fun, nvars, A, b, Aeq, beq, lb, ub, nonlcon, options)

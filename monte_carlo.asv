@@ -168,25 +168,10 @@ zlim([0, 80])
 hold on
 scatter3(pool(bool, 1), 2e-3.*ones(size(pool(bool, 1))), assessment(bool, 1), 'k')
 hold on 
-scatter3(1.49.*ones(size(pool(bool, 1))), pool(bool, 3), assessment(bool, 1), 'k')
+scatter3(1.49.*ones(size(pool(bool, 1))), pool(bool, 2), assessment(bool, 1), 'k')
 hold on
-scatter3(pool(bool, 1), pool(bool, 3), 0.*ones(size(pool(bool, 1))), 'k')
+scatter3(pool(bool, 1), pool(bool, 2), 0.*ones(size(pool(bool, 1))), 'k')
 grid on
 
-figure(12)
-scatter3(pool(bool, 3), pool(bool, 2), assessment(bool, 1), 'Filled', 'b')
-xlabel('k_p [-]')
-ylabel('k_d [-]')
-zlabel('Delivered Angular Momentum [Nms]')
-xlim([1e-6, 2e-3])
-ylim([4, 14])
-zlim([0, 80])
-hold on
-scatter3(pool(bool, 3), 4.*ones(size(pool(bool, 2))), assessment(bool, 1), 'k')
-hold on 
-scatter3(2e-3.*ones(size(pool(bool, 2))), pool(bool, 2), assessment(bool, 1), 'k')
-hold on
-scatter3(pool(bool, 3), pool(bool, 2), 0.*ones(size(pool(bool, 2))), 'k')
-grid on
 
 
