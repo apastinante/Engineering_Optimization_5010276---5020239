@@ -12,7 +12,7 @@ function dF = dfslp(x, J, n, Td_prem, ...
 % Forward finite diffence gradients of objective function and constraints
 
 % Finite diffence step
-hx = 1.0e-1;
+hx = 1.0e-8;
 
 % Gradient of objective function
 fx = simp_del_ang_mom(x, J, n, Td_prem, ...

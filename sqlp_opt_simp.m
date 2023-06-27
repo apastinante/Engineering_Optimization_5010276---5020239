@@ -68,7 +68,7 @@ while iteration < max_iterations
     
     % Define inequality constraints for linear programming
     A = lcon(x);  % Placeholder values, replace with actual constraint matrix
-    b = [0 ; 0];  % Placeholder values, replace with actual constraint vector
+    b = -nonlcon(x);  % Placeholder values, replace with actual constraint vector
     
     % Define equality constraints for linear programming
     Aeq = [];  % Placeholder values, replace with actual constraint matrix
@@ -96,10 +96,9 @@ end
 % Retrieve optimal solution
 optimal_Kp = x(1);
 optimal_Kd = x(2);
-%optimal_Ki = Ki;
 
 % Display results
 fprintf('Optimal Solution:\n');
 fprintf('Kp: %.4f\n', optimal_Kp);
 fprintf('Kd: %.4f\n', optimal_Kd);
-fprintf('Ki: %.4f\n', optimal_Ki);
+
