@@ -41,6 +41,10 @@ dfun = @(x)dfslp(x, J, n, Td_prem, ...
 fun = @(x)simp_del_ang_mom(x, J, n, Td_prem, T_max, pointing_accuracy, ...
     settling_time);
 
+x_opt = [0.1776 4.00]
+fun_opt = fun(x_opt)
+
+fprintf('Opt_func: %.4f\n', fun_opt);
 %options = optimoptions('linprog','Algorithm','dual-simplex')
 
 %x_opt = fmincon(fun,x0,A,b,Aeq,beq,lb,ub,nonlcon, options)
@@ -51,13 +55,21 @@ fun = @(x)simp_del_ang_mom(x, J, n, Td_prem, T_max, pointing_accuracy, ...
 
 
 % Define convergence criteria
-max_iterations = 300;   % Maximum number of iterations
+max_iterations = 50;   % Maximum number of iterations
 tolerance = 1e-6;       % Convergence tolerance for the objective function
 
 % Initialize iteration counter and objective function value
 iteration = 0;
 prev_obj_value = inf;
 x = x0;
+
+% Make a list to store the objective function and the x values at each iteration
+obj_values = [];
+x_values = [];
+
+% Make a list to store the constraint values at each iteration
+constraint_values = [];
+
 
 while iteration < max_iterations
     % Solve the linear programming subproblem
@@ -67,12 +79,12 @@ while iteration < max_iterations
     f = dfun(x);  
     
     % Define inequality constraints for linear programming
-    A = lcon(x);  % Placeholder values, replace with actual constraint matrix
-    b = -nonlcon(x);  % Placeholder values, replace with actual constraint vector
+    A = lcon(x);  
+    b = -nonlcon(x);  
     
     % Define equality constraints for linear programming
-    Aeq = [];  % Placeholder values, replace with actual constraint matrix
-    beq = [];  % Placeholder values, replace with actual constraint vector
+    Aeq = [];  
+    beq = [];  
     
     
     % Solve the linear programming problem
@@ -83,11 +95,13 @@ while iteration < max_iterations
         break;  % Convergence achieved, exit the loop
     end
     
-    % Update variables
-    Kp = x(1);
-    Kd = x(2);
-    %Ki = x(3);
+    % Save x and objective function value for plotting
+    x_values = [x_values , x];
+    obj_values = [obj_values , obj_value];
     
+    % Save constraint values for plotting
+    constraint_values = [constraint_values; nonlcon(x)];
+
     % Update iteration counter and previous objective function value
     iteration = iteration + 1;
     prev_obj_value = obj_value;
@@ -101,4 +115,43 @@ optimal_Kd = x(2);
 fprintf('Optimal Solution:\n');
 fprintf('Kp: %.4f\n', optimal_Kp);
 fprintf('Kd: %.4f\n', optimal_Kd);
+
+% Make a meshgrid with the lb and ub values for each variable
+[xq,yq] = meshgrid(lb(1):0.01:ub(1), lb(2):0.01:ub(2));
+
+% Plot the constraint values per constraint (2D array) as a function of the x (2D array) values, 
+% so it has to be a 2D colormap for each constraint
+c_tau = constraint_values(:, 1);
+c_acc = constraint_values(:, 2);
+c_tau_surf = griddata(x_values(1, :), x_values(2, :), c_tau, xq, yq);
+c_acc_surf = griddata(x_values(1, :), x_values(2, :), c_acc, xq, yq);
+
+figure(1);
+% Color map for constraint 1 at each combination of x(1) and x(2) value
+plot3(xq, yq, c_tau_surf);
+xlabel('Kp');
+ylabel('Kd');
+zlabel('Constraint 1');
+title('Constraint 1 vs. Kp and Kd');
+colorbar;
+figure(2);
+% Color map for constraint 2 at each combination of x(1) and x(2) value
+plot3(xq, yq, c_acc_surf);
+xlabel('Kp');
+ylabel('Kd');
+zlabel('Constraint 2');
+title('Constraint 2 vs. Kp and Kd');
+colorbar;
+
+% Show the objective function value per iteration
+figure(3);
+plot(obj_values);
+xlabel('Iteration');
+ylabel('Objective Function Value');
+title('Objective Function Value vs. Iteration');
+
+
+
+
+
 

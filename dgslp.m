@@ -15,7 +15,7 @@ function dG = dgslp(x, J, n, Td_prem, ...
 % Forward finite diffence gradients of objective function and constraints
 
 % Finite diffence step
-hx = 1.0e-8;
+hx = 1.0e-6;
 
 % Constraint gradients 
 gx = simp_constraints(x, J, n, Td_prem, ...
