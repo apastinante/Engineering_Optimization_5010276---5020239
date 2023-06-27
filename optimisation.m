@@ -53,7 +53,7 @@ options = optimoptions('patternsearch','Display','iter');
 
 % x_opt = patternsearch(fun,x0,A,b,Aeq,beq,lb,ub,nonlcon, options)
 
-%% Optimisation with Genetic Algorightm
+%% Optimisation with Genetic Algorightm 
 
 nvars = 2;
 options = optimoptions('ga', 'Display', 'iter', 'PopulationSize', 200);
