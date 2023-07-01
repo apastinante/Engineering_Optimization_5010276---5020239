@@ -1,4 +1,3 @@
-function answers = sqlp_opt_simp(kp_init,kd_init)
 %% Variable Definition
 
 J = [66.66 0 0; 0 66.66 0;
@@ -17,10 +16,10 @@ settling_time = 90;  % [s]
 
 %% Optimisation with Homemade SLP
 
-x0 = [kp_init;   kd_init ; 0]; % No Beta (relaxation leads to instability in our case) 
+x0 = [0.22    ;  6  ; 0]; % No Beta (relaxation leads to instability in our case) 
 % x0 = [0.1  ;  14]; 
-lb = [0.22 ; 6.05 ; 0];
-ub = [1.4 ; 8.5 ; inf];
+lb = [0.2 ; 6 ; 0];
+ub = [1.4 ; 8 ; inf];
 
 
 
@@ -50,7 +49,7 @@ fun = @(x)simp_del_ang_mom(x, J, n, Td_prem, T_max, pointing_accuracy, ...
 
 
 % Define convergence criteria
-max_iterations = 200;   % Maximum number of iterations
+max_iterations = 100;   % Maximum number of iterations
 tolerance = 8e-5;       % Convergence tolerance for the objective function
 
 % Initialize iteration counter and objective function value
@@ -69,29 +68,29 @@ constraint_values = [];
 % (the trust window is the region where the linear approximation is valid)
 % The trust window is centered at the current x value
 % The trust window is a square with side length 2*trust_radius
-trust_radius = [0.03; 0.03 ; 0.05];
+trust_radius = [0.03; 0.03; 0.05];
 k=10;
 one = [-1 ; -1];
-options = optimoptions('linprog','Algorithm','dual-simplex');
+
 % Define solely the Kp and Kd variables 
 x_var = [x(1); x(2)];
-
+options = optimoptions('linprog','Algorithm','interior-point');
 converge = 0;
 
 while iteration < max_iterations
     % Solve the linear programming subproblem
+    % Set the lower and upper bounds for the trust window
     x0=x;
     
-    vals = nonlcon(x_var)
-    disp(x_var)
+    vals = nonlcon(x_var);
     
     % If the non-linear constraints are not satisfied at the current x value,
     % then the linear approximation is not valid, and the trust window is
     % expanded
     if any(vals > 0)
-        trust_radius = [0.02; 0.03; 0.05];
+        trust_radius = [0.1; 0.2; 0.05];
     else
-        trust_radius = [0.02; 0.03; 0.05];
+        trust_radius = [0.03; 0.03; 0.05];
     end
     
     new_lb = max([x - trust_radius, lb], [] , 2);
@@ -127,8 +126,7 @@ while iteration < max_iterations
        break ; 
     end
     
-    x_var = [x(1); x(2)];
-    
+    x_var = [x(1); x(2)]
     obj_value = fun(x_var);
     % Save x and objective function value for plotting
     x_values = [x_values , x_var];
@@ -142,6 +140,9 @@ while iteration < max_iterations
             converge = 1;
             fprintf('Convergence achieved!\n');
             break;  % Convergence achieved, exit the loop
+        elseif (obj_values(end)) > 8.9
+            fprintf('Convergence not achieved!\n');
+
         end
      
     end
@@ -149,30 +150,29 @@ while iteration < max_iterations
 
     % Update iteration counter and previous objective function value
     iteration = iteration + 1;
+
 end
 optimal_Kp = x(1);
 optimal_Kd = x(2);
 
 answers = [exitflag ,  converge , iteration , optimal_Kd , optimal_Kp , obj_value];
-end 
-% Retrieve optimal solution
 
 
 % % Display results
-% fprintf('Optimal Solution:\n');
-% fprintf('Kp: %.4f\n', optimal_Kp);
-% fprintf('Kd: %.4f\n', optimal_Kd);
+fprintf('Optimal Solution:\n');
+fprintf('Kp: %.4f\n', optimal_Kp);
+fprintf('Kd: %.4f\n', optimal_Kd);
 
 % % Make a meshgrid with the lb and ub values for each variable
 % [xq,yq] = meshgrid(lb(1):0.01:ub(1), lb(2):0.01:ub(2));
-
+% 
 % % Plot the constraint values per constraint (2D array) as a function of the x (2D array) values, 
 % % so it has to be a 2D colormap for each constraint
 % c_tau = constraint_values(:, 1);
 % c_acc = constraint_values(:, 2);
 % c_tau_surf = griddata(x_values(1, :), x_values(2, :), c_tau, xq, yq);
 % c_acc_surf = griddata(x_values(1, :), x_values(2, :), c_acc, xq, yq);
-
+% 
 % figure(1);
 % % Color map for constraint 1 at each combination of x(1) and x(2) value
 % plot3(xq, yq, c_tau_surf);
@@ -189,16 +189,10 @@ end
 % zlabel('Constraint 2');
 % title('Constraint 2 vs. Kp and Kd');
 % colorbar;
-
+% 
 % % Show the objective function value per iteration
 % figure(3);
 % plot(obj_values);
 % xlabel('Iteration');
 % ylabel('Objective Function Value');
 % title('Objective Function Value vs. Iteration');
-
-
-
-
-
-

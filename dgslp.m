@@ -24,8 +24,16 @@ gx1plush = simp_constraints([x(1)+hx, x(2)], J, n, Td_prem, ...
     T_max, pointing_accuracy, settling_time);
 gx2plush = simp_constraints([x(1), x(2)+hx], J, n, Td_prem, ...
     T_max, pointing_accuracy, settling_time);
-dgdx1 = (gx1plush - gx)./hx;
-dgdx2 = (gx2plush - gx)./hx;
+gx1minush = simp_constraints([x(1)-hx, x(2)], J, n, Td_prem, ...
+    T_max, pointing_accuracy, settling_time);
+gx2minush = simp_constraints([x(1), x(2)-hx], J, n, Td_prem, ...
+    T_max, pointing_accuracy, settling_time);
+
+dgdx1 = (gx1plush - gx )./(hx);
+dgdx2 = (gx2plush - gx )./(hx);
+
+% dgdx1 = (gx1plush - 2*gx + gx1minush)./(2*hx);
+% dgdx2 = (gx2plush - 2*gx + gx2minush)./(2*hx);
 dG = [dgdx1' dgdx2'];
 
 end 

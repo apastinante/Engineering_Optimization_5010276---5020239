@@ -12,7 +12,7 @@ Re = 6371; %[km]
 a = Re + h; %[km] Semi-major axis of the orbit
 n = sqrt(mu/a^3);%[rad/s] angular rate of the spacecraft around the Earth
 
-Td_prem = [2e-4; 2e-4; 2e-4]; %[N] preliminary simplified disturbance torque
+Td_prem = [1e-4; 1e-4; 1e-4]; %[N] preliminary simplified disturbance torque
 
 %% Constraint values
 T_max = 1;  % [Nm]

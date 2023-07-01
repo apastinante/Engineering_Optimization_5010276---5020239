@@ -21,8 +21,16 @@ fx1plush = simp_del_ang_mom([x(1)+hx, x(2)],J, n, Td_prem, ...
     T_max, pointing_accuracy, settling_time);
 fx2plush = simp_del_ang_mom([x(1), x(2)+hx], J, n, Td_prem, ...
     T_max, pointing_accuracy, settling_time);
-dfdx1 = (fx1plush - fx)/hx;
-dfdx2 = (fx2plush - fx)/hx;
+fx1minush = simp_del_ang_mom([x(1)-hx, x(2)],J, n, Td_prem, ...
+    T_max, pointing_accuracy, settling_time);
+fx2minush = simp_del_ang_mom([x(1), x(2)-hx], J, n, Td_prem, ...
+    T_max, pointing_accuracy, settling_time);
+
+dfdx1 = (fx1plush - fx )/(hx);
+dfdx2 = (fx2plush - fx )/(hx);
+
+% dfdx1 = (fx1plush - 2*fx + fx1minush)/(2*hx);
+% dfdx2 = (fx2plush - 2*fx + fx2minush)/(2*hx);
 dF = [dfdx1 dfdx2];
 
 end 

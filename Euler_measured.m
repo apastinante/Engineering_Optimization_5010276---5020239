@@ -51,6 +51,7 @@ kp = 0.4145;
 kd = 12.7255;
 ki = 4.9622e-04;
 
+
 %% Constraint values
 T_max = 1;  % [Nm]
 pointing_accuracy = deg2rad(2);  % [rad]
@@ -88,6 +89,9 @@ ys(1, :) = y0;
 
 % fitness_simple = objective_function(kp, kd, J, n, Td_prem, ...
 %     T_max, pointing_accuracy, settling_time)
+
+kp = 0.2411;
+kd = 5.8066;
 
 fitness_full = final_objective_function(kp, kd, J, n, Td_prem, T_max, ...
     pointing_accuracy, settling_time, ki)
